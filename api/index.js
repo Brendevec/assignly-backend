@@ -10,35 +10,29 @@ const resend = new Resend(process.env.RESEND_KEY);
 
 const stripe = new Stripe(process.env.STRIPE_KEY);
 
-const CODE_POOLS = {
+const USED_CUSTOMER_CODES = new Set(["AL-PM-TAG3Q6-YEYW0L","AL-PM-JXDPR4-9M0QRP","AL-PM-HUC40O-V32WZ8"]);
 
-  monthly: [
+const OWNER_CODES = {
 
-    "AL-PM-9CG9TO-GZ5JFI","AL-PM-G56FTU-N8ITGC","AL-PM-TAG3Q6-YEYW0L","AL-PM-JXDPR4-9M0QRP","AL-PM-HUC40O-V32WZ8",
+  pro: ["AL-PM-9CG9TO-GZ5JFI","AL-PM-G56FTU-N8ITGC"],
 
-    "AL-PM-40M5F0-7JZFJG","AL-PM-WWS2CZ-S8S2EH","AL-PM-RY1HH8-SBM44R","AL-PM-DBD05D-SPTBKY","AL-PM-0RE0SH-CMJ736",
+  premium: ["AL-PP-C99YS9-7D78K2","AL-PP-9I4HNK-9GPXLL"],
 
-    "AL-PM-WV56SE-1014A2","AL-PM-MTI225-5ZML1H","AL-PM-5FZPQH-WFSUCW","AL-PM-FBD1PM-FA6NZ8","AL-PM-J7XB8C-7DJ8H7",
-
-    "AL-PM-E079I5-9P4YGQ","AL-PM-VE882K-H3P8LC","AL-PM-A730WO-TFG90U","AL-PM-RZ8VIT-PISLUW","AL-PM-M41NQE-G6WXSP"
-
-  ],
-
-  lifetime: [
-
-    "AL-LT-KI93DC-E6W0ZW","AL-LT-WITLO5-YGNM19","AL-LT-DR2AXS-466QRR","AL-LT-HT3HL7-TIGWSX","AL-LT-SF1UI1-8WBF91",
-
-    "AL-LT-FH76P6-X110LG","AL-LT-VOTXFP-8Y0UAB","AL-LT-RTT9DK-TR70MU","AL-LT-ZE9UN0-WHOGY3","AL-LT-9D6OMY-0IL615",
-
-    "AL-LT-ZJ05PX-LLRX4B","AL-LT-G1ID7P-H2H166","AL-LT-EGC1HC-42MNJE","AL-LT-XMIJYX-UAEHM3","AL-LT-4YA2QL-NIY81O",
-
-    "AL-LT-M0591L-UY8665","AL-LT-Z0XBLL-3EPHFQ","AL-LT-SX9R7C-46438C","AL-LT-JFCRM1-3N7MD7","AL-LT-9UB5Z6-VXQQ79"
-
-  ]
+  lifetime: ["AL-LT-KI93DC-E6W0ZW","AL-LT-WITLO5-YGNM19","AL-LT-DR2AXS-466QRR","AL-LT-HT3HL7-TIGWSX","AL-LT-SF1UI1-8WBF91"]
 
 };
 
-const usedCodes = new Set();
+const CODE_POOLS = {
+
+  monthly: ["AL-PM-C66DE0-VVH3G8","AL-PM-40RW76-JZFKYN","AL-PM-JGA8JZ-AZFIVZ","AL-PM-U3MYJ4-5BTZZG","AL-PM-ZY4HIJ-06RMPZ","AL-PM-8UZWLT-D4DPLP","AL-PM-PZKM5J-JWNPRJ","AL-PM-A71CUE-L49JKW","AL-PM-C8UWMN-T47IZ9","AL-PM-N4CPJ5-O5RXDB","AL-PM-VK7ZB5-025W51","AL-PM-ULAUI3-T5YS1H","AL-PM-7WKNFF-EGHVAB","AL-PM-RAO0X2-57NDG3","AL-PM-7IOQKC-U0B9YO","AL-PM-2PGXY4-SZEBF5","AL-PM-EG2112-IKN0YF","AL-PM-AL1LQB-GBVDP3","AL-PM-SZHTBR-31O38M","AL-PM-YEOGVA-9982OM"],
+
+  premium: ["AL-PP-8934MV-PJL9TV","AL-PP-DIFD68-3XY0GF","AL-PP-JKFB23-HU120M","AL-PP-MJZE6H-736G0U","AL-PP-EBQEIT-NYY0LR","AL-PP-W6L5ZC-GGUWYN","AL-PP-0BC2NE-8O7IOK","AL-PP-IKTAR3-MKPEEG","AL-PP-LO4HB6-GV4GMN","AL-PP-QO9JRI-NN8SZ1","AL-PP-W7THHW-J6RBI2","AL-PP-QOYDB4-JLF0RV","AL-PP-7TI9AC-185YDZ","AL-PP-MI86YH-1U57QC","AL-PP-8YKIS8-IFLO2N","AL-PP-C2OD3T-X9JRT5","AL-PP-PVY3S9-O5OG0F","AL-PP-TXFRWT-V6YEMZ","AL-PP-KV8DHN-4INPNH","AL-PP-VYDNYW-3XLXGO"],
+
+  lifetime: ["AL-LT-F7AAWG-WLBMPY","AL-LT-VZ3N2I-H0LINL","AL-LT-4YC8L9-YBNN1T","AL-LT-6S3FR9-3TG70J","AL-LT-SRYCZN-Y57PUW","AL-LT-R4GJR6-0HAW4D","AL-LT-B969JV-5V856M","AL-LT-E9DDET-JQR95I","AL-LT-NK2KA6-2KT0CD","AL-LT-PZ61FG-L88DTJ","AL-LT-59W0H4-K7SE5J","AL-LT-DC57O1-LD322H","AL-LT-DHSEMA-77DYEZ","AL-LT-TOVTU2-XPKPZU","AL-LT-DWE0TY-72A7TD","AL-LT-AHBSEO-L0RZA2","AL-LT-3SYEAC-SDUPRB","AL-LT-5XYK1I-515LHS","AL-LT-UP2TRS-X78CVY","AL-LT-5EX9OZ-JT8VF3"]
+
+};
+
+const usedCodes = new Set([...USED_CUSTOMER_CODES]);
 
 const deviceRegistry = {};
 
@@ -52,7 +46,17 @@ function buildValidCodes() {
 
   CODE_POOLS.monthly.forEach(c => { const exp = new Date(now); exp.setDate(exp.getDate()+30); codes[c] = { tier:"pro", expiry:exp.toISOString().split("T")[0] }; });
 
+  CODE_POOLS.premium.forEach(c => { const exp = new Date(now); exp.setDate(exp.getDate()+30); codes[c] = { tier:"pro", expiry:exp.toISOString().split("T")[0] }; });
+
   CODE_POOLS.lifetime.forEach(c => { codes[c] = { tier:"pro", expiry:"lifetime" }; });
+
+  USED_CUSTOMER_CODES.forEach(c => { if (c.startsWith("AL-LT")) codes[c] = { tier:"pro", expiry:"lifetime" }; else { const exp = new Date(now); exp.setDate(exp.getDate()+30); codes[c] = { tier:"pro", expiry:exp.toISOString().split("T")[0] }; } });
+
+  OWNER_CODES.pro.forEach(c => { codes[c] = { tier:"pro", expiry:"lifetime" }; });
+
+  OWNER_CODES.premium.forEach(c => { codes[c] = { tier:"pro", expiry:"lifetime" }; });
+
+  OWNER_CODES.lifetime.forEach(c => { codes[c] = { tier:"pro", expiry:"lifetime" }; });
 
   return codes;
 
@@ -110,7 +114,7 @@ module.exports = async (req, res) => {
 
       if (!registered) { deviceRegistry[code] = deviceId; }
 
-      else if (registered !== deviceId) return res.status(401).json({ error: "Code already used on another device. Email support@assignlyai.com to transfer.", ok: false });
+      else if (registered !== deviceId) return res.status(401).json({ error: "Code already used on another device. Email brenhj15@gmail.com to transfer.", ok: false });
 
     }
 
@@ -180,6 +184,8 @@ async function handleStripeWebhook(req, res) {
 
     if (metadata.plan === "lifetime") pool = "lifetime";
 
+    else if (metadata.plan === "premium") pool = "premium";
+
     const available = CODE_POOLS[pool].filter(c => !usedCodes.has(c));
 
     let code;
@@ -190,7 +196,7 @@ async function handleStripeWebhook(req, res) {
 
       const rand = (n) => Array.from({length:n}, () => chars[Math.floor(Math.random()*chars.length)]).join("");
 
-      const prefix = pool === "lifetime" ? "AL-LT" : "AL-PM";
+      const prefix = pool === "lifetime" ? "AL-LT" : pool === "premium" ? "AL-PP" : "AL-PM";
 
       code = `${prefix}-${rand(6)}-${rand(6)}`;
 
@@ -210,13 +216,15 @@ async function handleStripeWebhook(req, res) {
 
     codeToEmail[code] = customerEmail;
 
-    if (pool === "monthly") {
+    if (pool !== "lifetime") {
 
       VALID_CODES[code] = { tier: "pro", expiry: new Date(Date.now()+30*24*60*60*1000).toISOString().split("T")[0] };
 
     }
 
-    const planNames = { monthly: "Pro Monthly", lifetime: "Lifetime" };
+    const planNames = { monthly: "Pro", premium: "Premium", lifetime: "Lifetime" };
+
+    const planDetails = { monthly: "AI Tutor, auto-submit, all platforms", premium: "10x more value than Pro, AI Tutor, priority support", lifetime: "25x more value than Pro, never expires" };
 
     await resend.emails.send({
 
@@ -224,7 +232,7 @@ async function handleStripeWebhook(req, res) {
 
       to: customerEmail,
 
-      subject: "🎓 Your Assignly License Code",
+      subject: `🎓 Your Assignly ${planNames[pool]} License Code`,
 
       html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;">
 
@@ -240,13 +248,15 @@ async function handleStripeWebhook(req, res) {
 
         </div>
 
+        <p style="color:#666;">${planDetails[pool]}</p>
+
         <h3>How to get started:</h3>
 
         <ol>
 
-          <li><strong>Download:</strong> <a href="https://github.com/Brendevec/assignly-backend/releases/download/v1.5/AssignLee-v15.zip">Click here to download Assignly</a></li>
+          <li><strong>Download:</strong> <a href="https://github.com/Brendevec/assignly-backend/releases/download/v1.5/Assignly-AI.zip">Click here to download Assignly</a></li>
 
-          <li><strong>Install:</strong> Unzip, go to chrome://extensions, turn on Developer Mode, click Load unpacked, select the folder</li>
+          <li><strong>Install:</strong> Extract/unzip, go to chrome://extensions, turn on Developer Mode, click Load unpacked, select the assignlee folder</li>
 
           <li><strong>Activate:</strong> Open extension, paste your code in License Code field, click Activate</li>
 
@@ -256,7 +266,7 @@ async function handleStripeWebhook(req, res) {
 
         <p style="color:#ff3b30"><strong>⚠️ Important:</strong> This code only works on ONE device. Do not share it.</p>
 
-        <p>Need help? Email <a href="mailto:support@assignlyai.com">support@assignlyai.com</a></p>
+        <p>Need help? Email <a href="mailto:brenhj15@gmail.com">brenhj15@gmail.com</a></p>
 
         <hr style="border:none;border-top:1px solid #eee;margin:20px 0"/>
 
@@ -266,7 +276,7 @@ async function handleStripeWebhook(req, res) {
 
     });
 
-    await resend.emails.send({ from:"Assignly <noreply@assignlyai.com>", to:"brenhj15@gmail.com", subject:"💰 New Sale - " + planNames[pool], html:`<p>New ${planNames[pool]} sale!</p><p>Customer: ${customerEmail}</p><p>Code: ${code}</p>` });
+    await resend.emails.send({ from:"Assignly <noreply@assignlyai.com>", to:"brenhj15@gmail.com", subject:`💰 New Sale - Assignly ${planNames[pool]}`, html:`<p>New ${planNames[pool]} sale!</p><p>Customer: ${customerEmail}</p><p>Code: ${code}</p>` });
 
   }
 
